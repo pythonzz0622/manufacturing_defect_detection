@@ -1,11 +1,11 @@
 # manufacturing_defect_detection
 
 
-data preprocessing  
+data preprocessing.ipynb
 
 -> folder 옮긴후에  coco data format으로 맞춰서 만들기
 
-data_visualization
+data_visualization.ipynb
 
 -> json file 형식 시각화 & coco format 형식 시각화
 
