@@ -1,4 +1,3 @@
-# final.py
 _base_ = [
     'dataset.py',
     'schedule_1x.py',

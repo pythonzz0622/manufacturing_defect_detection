@@ -29,6 +29,7 @@ model = dict(
         start_level=1,
         add_extra_convs='on_input',
         num_outs=5),
+        
     bbox_head=dict(
         type='RetinaHead',
         num_classes=3,

@@ -18,3 +18,7 @@ mv defect to normal.ipynb
 remove anomaly data.ipynb
 
 -> t-test로 hist 분포 파악 후 이미지 유사도로 이상치 데이터 제거
+
+
+mmdetection model list 
+
