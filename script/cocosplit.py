@@ -12,6 +12,7 @@ x_train, x_test = ms.train_test_split(data, train_size=0.8)
 
 print('train 개수 :', len(x_train))
 print('test 개수 :', len(x_test))
+
 train_anns = funcy.lfilter(lambda a: a['image_id'] in np.array(
     x_train['id']), json_data['annotations'])
 

@@ -1,6 +1,6 @@
-checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
+    # 15 mini batch iter 마다 log 남김
     interval=15,
     hooks=[
         dict(type='TextLoggerHook'),
@@ -9,7 +9,7 @@ log_config = dict(
 # yapf:enable
 custom_hooks = [
     dict(type='NumClassCheckHook')
-    ]
+]
 
 dist_params = dict(backend='nccl')
 log_level = 'INFO'

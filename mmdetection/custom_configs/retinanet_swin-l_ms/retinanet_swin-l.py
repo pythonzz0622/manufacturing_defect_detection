@@ -1,5 +1,4 @@
 # model settings
-
 pretrained = 'https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window7_224_22k.pth'  # noqa
 
 model = dict(

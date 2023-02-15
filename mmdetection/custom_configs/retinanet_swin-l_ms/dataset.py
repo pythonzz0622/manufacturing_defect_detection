@@ -31,7 +31,10 @@ test_pipeline = [
             dict(type='Collect', keys=['img']),
         ])
 ]
+
 data = dict(
+    samples_per_gpu=8,
+    workers_per_gpu=1,
     train=dict(
         type=dataset_type,
         ann_file='../info/train.json',
@@ -52,4 +55,5 @@ data = dict(
         pipeline=test_pipeline)
 )
 
+# 10 epoch 마다 valdation
 evaluation = dict(interval=10, metric='bbox')  # evaluation inverval settingd

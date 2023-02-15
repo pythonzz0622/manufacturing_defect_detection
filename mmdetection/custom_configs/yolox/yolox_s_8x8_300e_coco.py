@@ -1,5 +1,3 @@
-_base_ = ['./schedule_1x.py', './default_runtime.py']
-
 img_scale = (640, 640)  # height, width
 
 # model settings
