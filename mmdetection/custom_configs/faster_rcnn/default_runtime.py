@@ -25,3 +25,4 @@ mp_start_method = 'fork'
 #       or not by default.
 #   - `base_batch_size` = (8 GPUs) x (2 samples per GPU).
 auto_scale_lr = dict(enable=False, base_batch_size=16)
+evaluation = dict(interval=10, metric='bbox')  # evaluation inverval settingd

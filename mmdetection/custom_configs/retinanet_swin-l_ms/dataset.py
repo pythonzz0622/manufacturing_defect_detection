@@ -40,6 +40,7 @@ data = dict(
         ann_file='../info/train.json',
         img_prefix='../dataset/',
         classes=classes,
+        filter_empty_gt=False,
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
@@ -54,6 +55,3 @@ data = dict(
         classes=classes,
         pipeline=test_pipeline)
 )
-
-# 10 epoch 마다 valdation
-evaluation = dict(interval=10, metric='bbox')  # evaluation inverval settingd

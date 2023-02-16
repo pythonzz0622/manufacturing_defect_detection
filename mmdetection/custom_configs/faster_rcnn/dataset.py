@@ -32,6 +32,7 @@ test_pipeline = [
 ]
 data = dict(
     train=dict(
+        filter_empty_gt=False,
         type=dataset_type,
         ann_file='../info/train.json',
         img_prefix='../dataset/',
@@ -50,5 +51,3 @@ data = dict(
         classes=classes,
         pipeline=test_pipeline)
 )
-
-evaluation = dict(interval=10, metric='bbox')  # evaluation inverval settingd

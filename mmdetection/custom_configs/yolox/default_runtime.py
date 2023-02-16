@@ -1,4 +1,9 @@
-checkpoint_config = dict(interval=1)
+max_epochs = 300
+num_last_epochs = 15
+resume_from = None
+interval = 10
+
+checkpoint_config = dict(interval=10)
 # yapf:disable
 log_config = dict(
     interval=50,
@@ -7,7 +12,22 @@ log_config = dict(
         # dict(type='TensorboardLoggerHook')
     ])
 # yapf:enable
-custom_hooks = [dict(type='NumClassCheckHook')]
+custom_hooks = [
+    dict(
+        type='YOLOXModeSwitchHook',
+        num_last_epochs=num_last_epochs,
+        priority=48),
+    dict(
+        type='SyncNormHook',
+        num_last_epochs=num_last_epochs,
+        interval=interval,
+        priority=48),
+    dict(
+        type='ExpMomentumEMAHook',
+        resume_from=resume_from,
+        momentum=0.0001,
+        priority=49)
+]
 
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
@@ -24,4 +44,14 @@ mp_start_method = 'fork'
 #   - `enable` means enable scaling LR automatically
 #       or not by default.
 #   - `base_batch_size` = (8 GPUs) x (2 samples per GPU).
-auto_scale_lr = dict(enable=False, base_batch_size=16)
+auto_scale_lr = dict(enable=False, base_batch_size=8)
+
+evaluation = dict(
+    save_best='auto',
+    # The evaluation interval is 'interval' when running epoch is
+    # less than ‘max_epochs - num_last_epochs’.
+    # The evaluation interval is 1 when running epoch is greater than
+    # or equal to ‘max_epochs - num_last_epochs’.
+    interval=interval,
+    dynamic_intervals=[(max_epochs - num_last_epochs, 1)],
+    metric='bbox')
