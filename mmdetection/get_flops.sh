@@ -1,0 +1,1 @@
+python tools/analysis_tools/get_flops.py ./custom_configs/retinanet_swin-l_ms/run.py --shape 512 461
