@@ -4,13 +4,20 @@ log_config = dict(
     interval=100,
     hooks=[
         dict(type='TextLoggerHook'),
-        # dict(type='TensorboardLoggerHook')
+        # dict(type='MMDetWandbHook',
+        #      init_kwargs={'project': 'mmdetection'},
+        #      interval=10,
+        #      log_checkpoint=True,
+        #      log_checkpoint_metadata=True,
+        #      num_eval_images=100,
+        #      bbox_score_thr=0.3)
     ])
 # yapf:enable
 custom_hooks = [
     dict(type='NumClassCheckHook')
-]
 
+]
+find_unused_parameters = True
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 load_from = None

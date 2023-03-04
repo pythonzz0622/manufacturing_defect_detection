@@ -4,7 +4,7 @@ dataset_type = 'CocoDataset'
 classes = ('over', 'under', 'non-welding')
 
 img_norm_cfg = dict(
-    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
+    mean=[46.84, 46.84, 46.84], std=[48.73, 48.73, 48.73], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
@@ -41,7 +41,8 @@ data = dict(
         img_prefix='../dataset/',
         classes=classes,
         filter_empty_gt=False,
-        pipeline=train_pipeline),
+        pipeline=train_pipeline
+    ),
     val=dict(
         type=dataset_type,
         ann_file='../info/test.json',
@@ -50,7 +51,7 @@ data = dict(
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file='../info/test.json',
+        ann_file='../info/all.json',
         img_prefix='../dataset/',
         classes=classes,
         pipeline=test_pipeline)
