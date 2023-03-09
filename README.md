@@ -1,5 +1,15 @@
 # manufacturing_defect_detection
 
+Python: 3.8.13
+CPU : AMD Ryzen Threadripper 3990X 64-Core Processor
+GPU 0: GeForce RTX 3090
+Torch:1.12.1
+TorchVision: 0.13.1
+OpenCV: 4.6.0
+MMCV: 1.7.0
+MMDetection: 2.26.0
+
+
 
 data preprocessing.ipynb
 
