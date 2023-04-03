@@ -1,0 +1,5 @@
+wandb:
+  project: 'mmdetection'
+  entity: 'gnu-ML-lab'
+  group: 'None'
+  name: 'retina-pafpn-swin-l'
