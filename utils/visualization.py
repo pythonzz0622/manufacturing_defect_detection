@@ -37,7 +37,7 @@ class VisualTool:
                 cv2.rectangle(img, (anno[0], anno[1]),
                               (anno[2], anno[3]), palette,  thickness=1)
                 cv2.putText(
-                    img, f'{catId}', (anno[0], anno[1] - 5), font, 0.8, palette, thickness=2)
+                    img, f'{catId}', (anno[2], anno[3] + 5), font, 0.8, palette, thickness=2)
 
         if img_annos.get('preds'):
             palette = (0, 255, 255)
@@ -48,7 +48,7 @@ class VisualTool:
                 cv2.rectangle(img, (anno[0], anno[1]),
                               (anno[2], anno[3]), palette,  thickness=1)
                 cv2.putText(
-                    img, f'{catId} : {score}', (anno[0], anno[1] - 5), font, 0.8, palette, thickness=2)
+                    img, f'{catId} : {score}', (anno[2]-100, anno[3] - 5), font, 0.8, palette, thickness=2)
         plt.figure(figsize=(8, 8))
         plt.title(f'idx {idx}')
         plt.imshow(img)
@@ -102,33 +102,37 @@ def bbox_debugger(img_annos , catId_to_name , img_prefix ='' ):
     img = cv2.imread(img_prefix + img_annos['file_name'])
     img = cv2.cvtColor(img , cv2.COLOR_BGR2RGB)
     box_data = []
-    for i in range(len(img_annos['preds']['category_id'])):
-        class_id = img_annos['preds']['category_id'][i]
-        bbox = tcvt.coco_to_cv2(img_annos['preds']['bbox'][i] , dim= 1)
-        score = img_annos['preds']['score'][i]
-        bbox = {
-        # another box expressed in the pixel domain
-        "position": {"minX": bbox[0], "maxX": bbox[2], "minY": bbox[1], "maxY": bbox[3]},
-        "domain": "pixel",
-        "class_id": class_id,
-        "box_caption": f"{catId_to_name[class_id]} , {score}",
-        "scores": {'score' : score}
-        }
-        box_data.append(bbox)
-    box_data_gt = []
-    for i in range(len(img_annos['ground_truth']['category_id'])):
-        class_id = img_annos['ground_truth']['category_id'][i]
-        bbox = tcvt.coco_to_cv2(img_annos['ground_truth']['bbox'][i] , dim= 1)
-        bbox = {
-        # another box expressed in the pixel domain
-        "position": {"minX": bbox[0], "maxX": bbox[2], "minY": bbox[1], "maxY": bbox[3]},
-        "domain": "pixel",
-        "class_id": class_id,
-        "box_caption": f"{catId_to_name[class_id]} "
-        }
-        box_data_gt.append(bbox)
-    boxes = {"predictions": {"box_data": box_data, "class_labels": catId_to_name},
-         "ground_truths": {"box_data": box_data_gt, "class_labels": catId_to_name},}  # inference-space
+    if img_annos.get('preds'):
+        for i in range(len(img_annos['preds']['category_id'])):
+            class_id = img_annos['preds']['category_id'][i]
+            bbox = tcvt.coco_to_cv2(img_annos['preds']['bbox'][i] , dim= 1)
+            score = img_annos['preds']['score'][i]
+            bbox = {
+            # another box expressed in the pixel domain
+            "position": {"minX": bbox[0], "maxX": bbox[2], "minY": bbox[1], "maxY": bbox[3]},
+            "domain": "pixel",
+            "class_id": class_id,
+            "box_caption": f"{catId_to_name[class_id]} , {score}",
+            "scores": {'score' : score}
+            }
+            box_data.append(bbox)
+    if img_annos.get('ground_truth'):
+        box_data_gt = []
+        for i in range(len(img_annos['ground_truth']['category_id'])):
+            class_id = img_annos['ground_truth']['category_id'][i]
+            bbox = tcvt.coco_to_cv2(img_annos['ground_truth']['bbox'][i] , dim= 1)
+            bbox = {
+            # another box expressed in the pixel domain
+            "position": {"minX": bbox[0], "maxX": bbox[2], "minY": bbox[1], "maxY": bbox[3]},
+            "domain": "pixel",
+            "class_id": class_id,
+            "box_caption": f"{catId_to_name[class_id]} "
+            }
+            box_data_gt.append(bbox)
+        boxes = {"predictions": {"box_data": box_data, "class_labels": catId_to_name},
+            "ground_truths": {"box_data": box_data_gt, "class_labels": catId_to_name},}  # inference-space
+    else:
+        boxes = {"predictions": {"box_data": box_data, "class_labels": catId_to_name}}
     return wandb.Image(img , boxes = boxes)
 
 def input_visual(images , bboxes  ,  batch_size , de_std , de_mean):

@@ -88,13 +88,11 @@ class CustomRandomSampler(Sampler[int]):
         self.data_source = data_source
         self._num_samples = num_samples
         self.generator = generator
-        cat1_imgs = set(data_source.coco.getImgIds(
-            catIds=data_source.coco.getCatIds()[0]))
-        cat2_imgs = set(data_source.coco.getImgIds(
-            catIds=data_source.coco.getCatIds()[1]))
-        self.defect_imgs = list(cat2_imgs | cat1_imgs)
-        self.other_imgs = list(
-            set(data_source.coco.getImgIds()) - set(cat2_imgs | cat1_imgs))
+        cat1_imgs = set(data_source.coco.getImgIds(catIds=data_source.coco.getCatIds()[0]))
+        cat2_imgs = set(data_source.coco.getImgIds(catIds=data_source.coco.getCatIds()[1]))
+        self.defect_imgs = list(cat2_imgs | cat1_imgs) \
+             + list(cat2_imgs) + list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)
+        self.other_imgs = list(set(data_source.coco.getImgIds()) - set(cat2_imgs | cat1_imgs))
 
     @property
     def num_samples(self) -> int:

@@ -11,7 +11,7 @@ print('image 개수 :', len(img_paths))
 print('label 개수 :', len(label_paths))
 
 img_dst_path = './dataset/images/'
-label_dst_path = './dataset/labels/'
+label_dst_path = './dataset/label/'
 
 
 for img_path in img_paths:

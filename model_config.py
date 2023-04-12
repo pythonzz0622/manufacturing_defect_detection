@@ -49,7 +49,25 @@ backbone = mmdet.models.backbones.SwinTransformer(embed_dims=192,
                                                   with_cp=False,
                                                   convert_weights=True,
                                                   init_cfg=init_cfg)
-
+# init_cfg = Config(dict(
+# type='Pretrained',
+# checkpoint= 'open-mmlab://resnest50'
+# ))
+# norm_cfg = dict(type='SyncBN', requires_grad=True)
+# backbone=dict(
+#     type='ResNeSt',
+#     stem_channels=64,
+#     depth=50,
+#     radix=2,
+#     reduction_factor=4,
+#     avg_down_stride=True,
+#     num_stages=4,
+#     out_indices=(0, 1, 2, 3),
+#     frozen_stages=1,
+#     norm_cfg=norm_cfg,
+#     norm_eval=False,
+#     style='pytorch',
+#     init_cfg=dict(type='Pretrained', checkpoint='open-mmlab://resnest50'))
 
 neck = mmdet.models.necks.FPN(
     in_channels=[192, 384, 768, 1536],
@@ -65,14 +83,14 @@ train_cfg = dict(
         neg_iou_thr=0.4,
         min_pos_iou=0,
         ignore_iof_thr=-1),
-    allowed_border=0,
+    allowed_border=-1,
     pos_weight=-1,
     debug=False)
 test_cfg = dict(
     nms_pre=1000,
     min_bbox_size=0,
-    score_thr=0.3,
-    nms=dict(type='nms', iou_threshold=0.5),
+    score_thr=0.05,
+    nms=dict(type='nms', iou_threshold=0.4),
     max_per_img=100)
 train_cfg = Config(train_cfg)
 test_cfg = Config(test_cfg)
@@ -83,9 +101,13 @@ bbox_head = mmdet.models.dense_heads.RetinaHead(num_classes=3,
                                                 feat_channels=256,
                                                 anchor_generator=dict(
                                                     type='AnchorGenerator',
-                                                    scales = [3,4,4.5] , 
-                                                    ratios=[0.3, 0.4 ,0.6, 1.0],
-                                                    strides=[12, 22, 32]),
+                                                    scales = [3,3.5,3.7, 4,4.5] , 
+                                                    ratios=[0.3, 0.4, 0.6, 0.7,1.0 , 1.3],
+                                                    strides=[12, 24, 32]
+                                                #    scales = [3,3.5,3.7, 4,4.5] , 
+                                                #     ratios=[0.3, 0.4, 0.5,0.6, 0.7,1.0],
+                                                #     strides=[12, 24, 32]
+                                                    ),
                                                 bbox_coder=dict(
                                                     type='DeltaXYWHBBoxCoder',
                                                     target_means=[
@@ -94,11 +116,10 @@ bbox_head = mmdet.models.dense_heads.RetinaHead(num_classes=3,
                                                 loss_cls=dict(
                                                     type='FocalLoss',
                                                     use_sigmoid=True,
-                                                    gamma=1.0,
+                                                    gamma=2.0,
                                                     alpha=0.25,
-                                                    loss_weight=1.3),
-                                                loss_bbox=dict(type='L1Loss', loss_weight=0.7
-                                                               ),
+                                                    loss_weight=1.0),
+                                                loss_bbox=dict(type='L1Loss', loss_weight=1.0),
                                                 train_cfg=train_cfg,
                                                 test_cfg=test_cfg)
 

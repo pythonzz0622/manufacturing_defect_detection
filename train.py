@@ -18,18 +18,13 @@ import json
 import wandb
 import time
 ###################################### transformer ##############################
-mean = (0.485, 0.456, 0.406)
-std = (0.229, 0.224, 0.225)
+mean = (0.5, 0.5, 0.5)
+std = (0.5, 0.5, 0.5)
 transformer = A.Compose([
     A.Resize(512, 512),
-    A.Flip(),
-    A.OneOf([
-        A.Rotate(limit=(0, 90), p=0.7),
-        A.Compose([
-            A.HorizontalFlip(always_apply=True),
-            A.Rotate(limit=(-90, 0), p=0.7)
-        ])
-    ], p=0.7),
+    A.VerticalFlip(),
+    A.RandomRotate90(),
+    A.HorizontalFlip(),
     A.Normalize(mean=mean, std=std,
                 max_pixel_value=255.0),
     ToTensorV2()
@@ -46,12 +41,13 @@ val_transformer = A.Compose([
 
 ##########################################################################################
 run = wandb.init(
-  project="retina-fpn-swin-l",
-  notes="test_experiment",
+    id = 'retina-fpn-swin-all-data-422',
+  project="retina-fpn-swin_all_data_v2",
+  notes="defect 422",
   entity = "gnu-ml-lab",
-  tags=["baseline"]
+  tags=["nms IoU 0.4" , "modified-anchor" ,'renew_data' , 'lr_schecular']
 )
-
+save_name = 'rfs-a-d-422'
 device = torch.device('cuda')
 
 train_dataset = customLoader.CustomDataset(
@@ -75,15 +71,15 @@ optimizer = optim.AdamW(model.parameters(),
                         betas=(0.9, 0.999),
                         weight_decay=0.05,
                         )
-
+scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30,80], gamma=0.5)
 model = model.cuda()
-# model.load_state_dict(torch.load('./test3.pth'))
+# model.load_state_dict(torch.load('./ckpts/data_retina_num_5000_epoch_100.pth'))
 
-# wandb.define_metric("train/step")
+wandb.define_metric("train/step")
 wandb.define_metric("val/epoch")
-# wandb.define_metric("train/*", step_metric="train/step")
+wandb.define_metric("train/*", step_metric="train/step")
 wandb.define_metric("val/*", step_metric="val/epoch")
-epochs = 50
+epochs = 100
 cls_losses = 0
 bbox_losses = 0
 total_losses = 0
@@ -91,11 +87,16 @@ step = 0
 
 for epoch in range(1, epochs + 1):
     print(f'epoch : {epoch}')
+    cls_losses = 0
+    bbox_losses = 0
+    total_losses = 0
     for i, (img_metas, images, bboxes, labels) in enumerate(train_dataloader):
         step += i
-        images = images.cuda()
+        if i  < 5:
+            fig = utils.visualization.input_visual(images , bboxes , 8 , de_std , de_mean)
+            wandb.log({'train/bbox_debug' :fig} ,step = step )
         model.train()
-
+        images = images.cuda()
         bboxes = [bbox.cuda() for bbox in bboxes]
         labels = [label.cuda() for label in labels]
         outputs = model(images)
@@ -115,9 +116,10 @@ for epoch in range(1, epochs + 1):
         loss_cls_total = losses['loss_cls'][0] + losses['loss_cls'][1] + losses['loss_cls'][2]
         loss_bbox_total = losses['loss_bbox'][0] +  losses['loss_bbox'][1] + losses['loss_bbox'][2]
         total_loss = loss_cls_total + loss_bbox_total
+        optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
-        optimizer.zero_grad()
+        
 
         cls_losses += loss_cls_total
         bbox_losses += loss_bbox_total
@@ -129,16 +131,20 @@ for epoch in range(1, epochs + 1):
                 f'step : {i}\nloss_bbox : {bbox_losses / 100}  loss_cls_total : {cls_losses /100}  total_loss : {total_losses / 100}')
             train_log_dict = {
                 'train/step' : step , 
+                'train/lr' : optimizer.param_groups[0]['lr'],
                 "train/loss_bbox" : bbox_losses / 100,
                 "train/loss_cls" : cls_losses / 100,
                 "train/loss_total" : total_losses / 100
             }
+            scheduler.step()
             wandb.log(train_log_dict)
             cls_losses = 0
             bbox_losses = 0
             total_losses = 0
     # if epoch % 10 == 0:
-    if epoch % 5 == 0:
+    os.makedirs(f'./ckpts/{save_name}' ,exist_ok= True)
+    torch.save(model.state_dict(), f'./ckpts/{save_name}/epoch_{epoch}.pth')
+    if epoch:
         cls_losses = 0
         bbox_losses = 0
         total_losses = 0
@@ -176,41 +182,49 @@ for epoch in range(1, epochs + 1):
                 )
                 preds = [(pred[0].cpu().numpy(),pred[1].cpu().numpy())for pred in preds]
                 preds_list.extend(zip( [cvt.img_name_to_id[ os.path.basename(img_meta['filename'])] for img_meta in img_metas], preds))
-                result = [{'image_id' : pred_list[0],
-                            'bbox' : tcvt.cv2_to_coco(pred_list[1][0][i][:-1].tolist() , dim =1),
-                            'score' : pred_list[1][0][i][-1],
-                            'category_id' : pred_list[1][1][i]} for pred_list in preds_list  for i in range(len(pred_list[1][1]))]
+            result = [{'image_id' : pred_list[0],
+                        'bbox' : tcvt.cv2_to_coco(pred_list[1][0][i][:-1].tolist() , dim =1),
+                        'score' : pred_list[1][0][i][-1],
+                        'category_id' : pred_list[1][1][i] } for pred_list in preds_list  for i in range(len(pred_list[1][1]))
+                        if tcvt.get_area(pred_list[1][0][i][:4]) > 0
+                         ]
                 
 
             with open('result.json', "w") as json_file:
                 json.dump(result, json_file, indent=4 , cls = tcvt.NpEncoder)
-
-            visualtool = utils.visualization.VisualTool(coco_gt_path = './dataset/test.json' , coco_pred_path='./result.json' )
-            PR_plot = visualtool.PR_plot()
-            R_plot , P_plot , F1_plot = visualtool.conf_vs()
-            coco_cvt = utils.type_converter.COCO_converter('./dataset/test.json' , 'result.json')
-            mAP = coco_cvt.results['precision'][0, :, :, 0, -1].mean()
-            cat1_precision ,cat1_recall  = coco_cvt.PR(conf_score=0.5, catId = 1)
-            cat2_precision ,cat2_recall = coco_cvt.PR(conf_score=0.5, catId = 2)
-            val_log_dict = {
-            "val/epoch" : epoch,
-            "val/loss_bbox" : bbox_losses / len(val_dataloader),
-            "val/loss_cls" : cls_losses / len(val_dataloader),
-            "val/loss_total" : total_losses / len(val_dataloader),
-            "val_precision" : (cat1_precision + cat2_precision) /2 ,
-            "val_recall" : (cat1_recall + cat2_recall) /2 ,
-            "val_mAP" :  mAP}
-            wandb.log(val_log_dict)
-            val_img_dict =  {
-                "val/PR_plot": PR_plot,
-                "val/R_plot": R_plot,
-                "val/P_plot": P_plot,
-                "val/F1_plot": F1_plot , 
-            }
-            wandb.log(val_img_dict)
+            try:
+                visualtool = utils.visualization.VisualTool(coco_gt_path = './dataset/test.json' , coco_pred_path='./result.json' )
+                PR_plot = visualtool.PR_plot()
+                R_plot , P_plot , F1_plot = visualtool.conf_vs()
+                coco_cvt = utils.type_converter.COCO_converter('./dataset/test.json' , 'result.json')
+                mAP = coco_cvt.results['precision'][0, :, :, 0, -1].mean()
+                cat1_precision ,cat1_recall  = coco_cvt.PR(conf_score=0.5, catId = 1)
+                cat2_precision ,cat2_recall = coco_cvt.PR(conf_score=0.5, catId = 2)
+                val_log_dict = {
+                "val/epoch" : epoch,
+                "val/loss_bbox" : bbox_losses / len(val_dataloader),
+                "val/loss_cls" : cls_losses / len(val_dataloader),
+                "val/loss_total" : total_losses / len(val_dataloader),
+                "val_precision" : (cat1_precision + cat2_precision) /2 ,
+                "val_recall" : (cat1_recall + cat2_recall) /2 ,
+                "val_mAP" :  mAP}
+                wandb.log(val_log_dict)
+                debug_img_id_list = [coco_cvt.img_name_to_id[img_meta['filename'].replace('./dataset/images/' ,'')] for img_meta in img_metas]
+                try:
+                    wandb_imgs = [utils.visualization.bbox_debugger(coco_cvt.img_annos(img_id),coco_cvt.catId_to_name ,img_prefix ='./dataset/'  ) for img_id in debug_img_id_list]
+                except:
+                    pass
+                val_img_dict =  {
+                    # 'val/bbox_debug' : wandb_imgs,
+                    "val/PR_plot": PR_plot,
+                    "val/R_plot": R_plot,
+                    "val/P_plot": P_plot,
+                    "val/F1_plot": F1_plot , 
+                }
+                wandb.log(val_img_dict)
+            except:
+                pass
             
-            
-            torch.save(model.state_dict(), f'./ckpts/epoch_{epoch}.pth')
 
             print(f'step : {j}\nloss_bbox : {bbox_losses / len(val_dataloader)}   \
                     loss_cls_total : {cls_losses /len(val_dataloader)}  total_loss : {total_losses / len(val_dataloader)}')

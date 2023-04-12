@@ -4,7 +4,7 @@ import fiftyone as fo
 from pycocotools.coco import COCO
 import os
 import re
-
+from tqdm import tqdm
 # get groundtruth info
 coco = COCO('./dataset/test.json')
 preds_path = './result.json'
@@ -31,7 +31,7 @@ def get_pred_samples(json_data, img_id):
         bbox = min_max(pred['bbox'])
         prediction_samples.append(
             fo.Detection(label=id_to_cat[pred['category_id']],
-                         bounding_box=bbox, confidence=pred['score'])
+                         bounding_box=bbox, confidence=pred['score'] , area = int(pred['bbox'][2] * pred['bbox'][3]))
         )
     return prediction_samples
 
@@ -44,7 +44,7 @@ id_to_cat = {v['id']: v['name'] for v in coco.loadCats(coco.getCatIds())}
 
 # img 별 iteration
 samples = []
-for img_id in coco.getImgIds():
+for img_id in tqdm(coco.getImgIds()):
     # fiftyone sample에 img 삽입
     sample = fo.Sample(filepath='./dataset/' +
                        coco.loadImgs(img_id)[0]['file_name'])
@@ -72,12 +72,17 @@ for img_id in coco.getImgIds():
         
     samples.append(sample)
 
-# fob.compute_uniqueness(dataset, num_workers=64)
+
 # fob.compute_similarity(dataset, brain_key="similarity", num_workers=64)
 # dataset title 넣기
 dataset = fo.Dataset()
 dataset.add_samples(samples)
-
+# dataset.add_sample_field( field_name='preds.ground_truth.area', ftype = fo.core.fields.IntField , description ='An area')
+if pred_list:
+    dataset.add_sample_field( field_name='preds.detections.area', ftype = fo.core.fields.IntField , description ='An area')
+# fob.compute_uniqueness(dataset, num_workers=64)
+# fob.compute_mistakenness(samples=dataset, pred_field='preds', label_field='ground_truth')
+dataset.save()
 
 if __name__ == "__main__":
     session = fo.launch_app(dataset, port=8888, address="0.0.0.0")

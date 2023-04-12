@@ -75,6 +75,9 @@ def cv2_to_coco(bboxes, dim=2):
                 for x1, y1, x2, y2 in bboxes]
     return anno
 
+def get_area(bbox , dim=2 , dtype = 'cv2'):
+    x1, y1 , x2 ,y2 = bbox
+    return int((x2-x1) * (y2-y1))
 
 def _json_parser(json_list, keys=['bbox', 'category_id', 'score']):
     # json에서 원하는 key value값 반환
@@ -161,8 +164,7 @@ class COCO_converter:
 
         truth_data = np.array([truth_list, truth_conf_list])
         truth_data = truth_data[1, :] >= conf_score
-        recall = np.count_nonzero(truth_data) / \
-            (len(truth_data) + 1e-10)
+        recall = np.count_nonzero(truth_data) / (len(truth_data) + 1e-10)
         return precision, recall
 
     def img_annos(self, idx):
