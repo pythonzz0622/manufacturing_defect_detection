@@ -101,12 +101,9 @@ bbox_head = mmdet.models.dense_heads.RetinaHead(num_classes=3,
                                                 feat_channels=256,
                                                 anchor_generator=dict(
                                                     type='AnchorGenerator',
-                                                    scales = [3,3.5,3.7, 4,4.5] , 
-                                                    ratios=[0.3, 0.4, 0.6, 0.7,1.0 , 1.3],
-                                                    strides=[12, 24, 32]
-                                                #    scales = [3,3.5,3.7, 4,4.5] , 
-                                                #     ratios=[0.3, 0.4, 0.5,0.6, 0.7,1.0],
-                                                #     strides=[12, 24, 32]
+                                                    scales = [3, 3.5,3.7, 4,4.5] , 
+                                                    ratios=[ 0.3, 0.4, 0.6, 0.7,1.0,1.2 ],
+                                                    strides=[15, 22, 30]
                                                     ),
                                                 bbox_coder=dict(
                                                     type='DeltaXYWHBBoxCoder',
@@ -118,8 +115,8 @@ bbox_head = mmdet.models.dense_heads.RetinaHead(num_classes=3,
                                                     use_sigmoid=True,
                                                     gamma=2.0,
                                                     alpha=0.25,
-                                                    loss_weight=1.0),
-                                                loss_bbox=dict(type='L1Loss', loss_weight=1.0),
+                                                    loss_weight=0.7),
+                                                loss_bbox=dict(type='L1Loss', loss_weight=0.3),
                                                 train_cfg=train_cfg,
                                                 test_cfg=test_cfg)
 

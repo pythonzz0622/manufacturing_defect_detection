@@ -41,13 +41,13 @@ val_transformer = A.Compose([
 
 ##########################################################################################
 run = wandb.init(
-    id = 'retina-fpn-swin-all-data-422',
-  project="retina-fpn-swin_all_data_v2",
-  notes="defect 422",
+    id = "fixed5-normal6000-defect477",
+  project='retina-fpn-swin-l',
+  notes="defect",
   entity = "gnu-ml-lab",
   tags=["nms IoU 0.4" , "modified-anchor" ,'renew_data' , 'lr_schecular']
 )
-save_name = 'rfs-a-d-422'
+save_name = 'rfs-a-d-477'
 device = torch.device('cuda')
 
 train_dataset = customLoader.CustomDataset(
@@ -144,7 +144,7 @@ for epoch in range(1, epochs + 1):
     # if epoch % 10 == 0:
     os.makedirs(f'./ckpts/{save_name}' ,exist_ok= True)
     torch.save(model.state_dict(), f'./ckpts/{save_name}/epoch_{epoch}.pth')
-    if epoch:
+    if epoch :
         cls_losses = 0
         bbox_losses = 0
         total_losses = 0

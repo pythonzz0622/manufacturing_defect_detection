@@ -91,7 +91,7 @@ class CustomRandomSampler(Sampler[int]):
         cat1_imgs = set(data_source.coco.getImgIds(catIds=data_source.coco.getCatIds()[0]))
         cat2_imgs = set(data_source.coco.getImgIds(catIds=data_source.coco.getCatIds()[1]))
         self.defect_imgs = list(cat2_imgs | cat1_imgs) \
-             + list(cat2_imgs) + list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)
+            #  + list(cat2_imgs) + list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)+ list(cat2_imgs)
         self.other_imgs = list(set(data_source.coco.getImgIds()) - set(cat2_imgs | cat1_imgs))
 
     @property
@@ -203,7 +203,7 @@ def import_data_loader(data_dir, transformer):
     random_sampler_1 = CustomRandomSampler(dataset)
     random_sampler_2 = CustomRandomSampler(dataset)
     batchsampler = CustomBatchSampler(
-        random_sampler_1, random_sampler_2, batch_size=8, fixed_size=2)
+        random_sampler_1, random_sampler_2, batch_size=8, fixed_size=3)
     dataloader = CustomDataLoader(
         dataset, batch_sampler=batchsampler, num_workers=8, collate_fn=collate_fn)
 
