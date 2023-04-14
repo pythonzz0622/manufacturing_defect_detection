@@ -1,6 +1,6 @@
 from customLoader import import_data_loader
 import customLoader
-from model_config import retina_fpn_swin_l
+import config
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import torch.optim as optim
@@ -17,163 +17,133 @@ import utils
 import json
 import wandb
 import time
-###################################### transformer ##############################
-mean = (0.5, 0.5, 0.5)
-std = (0.5, 0.5, 0.5)
-transformer = A.Compose([
+import argparse
+
+parser = argparse.ArgumentParser(description='coco_file을 가지고 train test를 나누는 script')
+
+parser.add_argument('--save_name' , help = 'retina-fpn-swin-l' , type = str)
+parser.add_argument('--load_path' , help = './ckpts/data_retina_num_5000_epoch_100.pth' , type = str)
+parser.add_argument('--epochs' , help = '100' , type = int)
+parser.add_argument('--interval',  help = '100' , type = int)
+parser.add_argument('--train_path' , help ='./dataset/train.json' , type =str)
+parser.add_argument('--val_path', help = './dataset/test.json' , type =str)
+args = parser.parse_args()
+
+# set transformer ---------------------------------------------------------------
+mean , std = (0.5, 0.5, 0.5) , (0.5, 0.5, 0.5)
+
+
+train_transformer = A.Compose([
     A.Resize(512, 512),
     A.VerticalFlip(),
     A.RandomRotate90(),
     A.HorizontalFlip(),
-    A.Normalize(mean=mean, std=std,
-                max_pixel_value=255.0),
-    ToTensorV2()
-], bbox_params=A.BboxParams(format='coco', label_fields=['class_ids']))
+    A.Normalize(mean=mean, std=std, max_pixel_value=255.0),
+    ToTensorV2()], 
+    bbox_params=A.BboxParams(format='coco', label_fields=['class_ids']))
 
 val_transformer = A.Compose([
     A.Resize(height=512, width=512),
-    A.Normalize(mean=mean, std=std,
-                max_pixel_value=255.0),
-    ToTensorV2(),
-],
-    bbox_params=A.BboxParams(format='coco', label_fields=['class_ids']),
-)
+    A.Normalize(mean=mean, std=std, max_pixel_value=255.0),
+    ToTensorV2(),],
+    bbox_params=A.BboxParams(format='coco', label_fields=['class_ids']),)
 
-##########################################################################################
+# set config -------------------------------------------------------------------------
 run = wandb.init(
-    id = "fixed5-normal6000-defect477",
-  project='retina-fpn-swin-l',
-  notes="defect",
-  entity = "gnu-ml-lab",
-  tags=["nms IoU 0.4" , "modified-anchor" ,'renew_data' , 'lr_schecular']
-)
-save_name = 'rfs-a-d-477'
-device = torch.device('cuda')
-
-train_dataset = customLoader.CustomDataset(
-    './dataset/train.json', transformer=transformer)
-train_dataloader = import_data_loader(
-    './dataset/train.json', transformer=transformer)
-val_dataset = customLoader.TestCustomDataset(
-    './dataset/test.json', transformer=val_transformer)
-val_dataloader = DataLoader(dataset=val_dataset, batch_size=8,
-                            collate_fn=customLoader.collate_fn)
-cvt = tcvt.COCO_converter('./dataset/test.json')
-
-de_std = tuple(std * 255 for std in std)
-de_mean = tuple(mean * 255 for mean in mean)
+    id = "ret-fpn-swin-l",
+    project='defect-detection',
+    notes="defect",
+    entity = "gnu-ml-lab" , 
+    # mode="disabled"
+    )
+backbone = 'Swin_L'
+neck = 'Swin_L_neck'
+bbox_head = 'Retina_head'
+prefix_size =  3
+save_name = args.save_name
+load_path = args.load_path
+os.makedirs(f'./ckpts/{save_name}' ,exist_ok= True)
+os.makedirs(f'./result/{save_name}' ,exist_ok= True)
+epochs = args.epochs
+interval = args.interval
+train_path = args.train_path
+val_path = args.val_path
 
 
-model = retina_fpn_swin_l()
+train_dataloader = import_data_loader( train_path, transformer=train_transformer , prefix_size= prefix_size)
+val_dataset = customLoader.TestCustomDataset( val_path, transformer=val_transformer)
+val_dataloader = DataLoader(dataset=val_dataset, batch_size=8, collate_fn=customLoader.collate_fn)
+val_nums = len(val_dataloader)
+cvt = tcvt.COCO_converter(val_path)
 
-optimizer = optim.AdamW(model.parameters(),
-                        lr=0.0001 / 8,
-                        betas=(0.9, 0.999),
-                        weight_decay=0.05,
-                        )
+de_std , de_mean = tuple(std * 255 for std in std) , tuple(mean * 255 for mean in mean)
+
+
+model = config.get_model(backbone_name = backbone, 
+                                   neck_name = neck ,
+                                    bbox_head_name =  bbox_head)
+
+optimizer = optim.AdamW(model.parameters(), lr=0.0001 / 8, betas=(0.9, 0.999), weight_decay=0.05,)
 scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30,80], gamma=0.5)
-model = model.cuda()
-# model.load_state_dict(torch.load('./ckpts/data_retina_num_5000_epoch_100.pth'))
 
-wandb.define_metric("train/step")
-wandb.define_metric("val/epoch")
-wandb.define_metric("train/*", step_metric="train/step")
-wandb.define_metric("val/*", step_metric="val/epoch")
-epochs = 100
-cls_losses = 0
-bbox_losses = 0
-total_losses = 0
+
+
+wandb.define_metric("train/step"); wandb.define_metric("train/*", step_metric="train/step"); 
+wandb.define_metric("val/epoch");  wandb.define_metric("val/*", step_metric="val/epoch")
+
 step = 0
+
+if load_path: model.load_state_dict(torch.load(load_path))
+model = model.cuda()
 
 for epoch in range(1, epochs + 1):
     print(f'epoch : {epoch}')
-    cls_losses = 0
-    bbox_losses = 0
-    total_losses = 0
-    for i, (img_metas, images, bboxes, labels) in enumerate(train_dataloader):
+    cls_losses, bbox_losses, total_losses = 0, 0, 0
+    
+    for i, (img_metas, images, bboxes, labels) in enumerate(train_dataloader,1):
         step += i
         if i  < 5:
-            fig = utils.visualization.input_visual(images , bboxes , 8 , de_std , de_mean)
-            wandb.log({'train/bbox_debug' :fig} ,step = step )
-        model.train()
-        images = images.cuda()
-        bboxes = [bbox.cuda() for bbox in bboxes]
-        labels = [label.cuda() for label in labels]
-        outputs = model(images)
-        if i ==1: start = time.time()
-        losses = model.bbox_head.loss(
-            cls_scores=outputs[0],
-            bbox_preds=outputs[1],
-            gt_bboxes=bboxes,
-            gt_labels=labels,
-            img_metas=img_metas
-        )
-        if i==1:
-            end = time.time()
-            delta = end - start 
-            eta = delta * len(train_dataloader)* (epochs - epoch)
-            utils.type_converter.sec_to_format(eta)
-        loss_cls_total = losses['loss_cls'][0] + losses['loss_cls'][1] + losses['loss_cls'][2]
-        loss_bbox_total = losses['loss_bbox'][0] +  losses['loss_bbox'][1] + losses['loss_bbox'][2]
-        total_loss = loss_cls_total + loss_bbox_total
-        optimizer.zero_grad()
-        total_loss.backward()
-        optimizer.step()
-        
+            wandb.log({'train/bbox_debug' : utils.visualization.input_visual(images , bboxes , 8 , de_std , de_mean)} ,step = step )
 
+        model.train()
+        outputs , loss_bbox_total , loss_cls_total, total_loss = utils.iter_model(model , img_metas , images , bboxes , labels)
         cls_losses += loss_cls_total
         bbox_losses += loss_bbox_total
         total_losses += total_loss
+        
+        optimizer.zero_grad()
+        total_loss.backward()
+        optimizer.step()
 
-        if i % 100 == 0 and i >1 :
+        if i % interval == 0:
+            scheduler.step()
+
             print(f'[{i} / {len(train_dataloader)}]')
-            print(
-                f'step : {i}\nloss_bbox : {bbox_losses / 100}  loss_cls_total : {cls_losses /100}  total_loss : {total_losses / 100}')
-            train_log_dict = {
+            print(f'step : {i}\n \
+                    loss_bbox : {bbox_losses / interval}  \
+                    loss_cls_total : {cls_losses /interval}  \
+                    total_loss : {total_losses / interval}')
+            wandb.log({
                 'train/step' : step , 
                 'train/lr' : optimizer.param_groups[0]['lr'],
-                "train/loss_bbox" : bbox_losses / 100,
-                "train/loss_cls" : cls_losses / 100,
-                "train/loss_total" : total_losses / 100
-            }
-            scheduler.step()
-            wandb.log(train_log_dict)
-            cls_losses = 0
-            bbox_losses = 0
-            total_losses = 0
-    # if epoch % 10 == 0:
-    os.makedirs(f'./ckpts/{save_name}' ,exist_ok= True)
+                "train/loss_bbox" : bbox_losses / interval,
+                "train/loss_cls" : cls_losses / interval,
+                "train/loss_total" : total_losses / interval
+            })
+            cls_losses, bbox_losses, total_losses = 0, 0, 0
+
+    
     torch.save(model.state_dict(), f'./ckpts/{save_name}/epoch_{epoch}.pth')
     if epoch :
-        cls_losses = 0
-        bbox_losses = 0
-        total_losses = 0
-
-        preds_list = []
+        cls_losses , bbox_losses , total_losses = 0, 0, 0
+        preds_list = list()
         with torch.no_grad():
             model.eval()
             for j, (img_metas, images, bboxes, labels) in enumerate(val_dataloader):
-
-                images = images.cuda()
-                bboxes = [bbox.cuda() for bbox in bboxes]
-                labels = [label.cuda() for label in labels]
-                outputs = model(images)
-                losses = model.bbox_head.loss(
-                    cls_scores=outputs[0],
-                    bbox_preds=outputs[1],
-                    gt_bboxes=bboxes,
-                    gt_labels=labels,
-                    img_metas=img_metas
-                )
-                loss_cls_total = losses['loss_cls'][0] + \
-                    losses['loss_cls'][1] + losses['loss_cls'][2]
-                loss_bbox_total = losses['loss_bbox'][0] + \
-                    losses['loss_bbox'][1] + losses['loss_bbox'][2]
-                total_loss = loss_cls_total + loss_bbox_total
+                
+                outputs , loss_bbox_total , loss_cls_total, total_loss = utils.iter_model(model , img_metas , images , bboxes , labels)
                 cls_losses += loss_cls_total
                 bbox_losses += loss_bbox_total
-                total_losses += total_loss
-
                 preds = model.bbox_head.get_bboxes(
                     cls_scores=outputs[0],
                     bbox_preds=outputs[1],
@@ -182,53 +152,29 @@ for epoch in range(1, epochs + 1):
                 )
                 preds = [(pred[0].cpu().numpy(),pred[1].cpu().numpy())for pred in preds]
                 preds_list.extend(zip( [cvt.img_name_to_id[ os.path.basename(img_meta['filename'])] for img_meta in img_metas], preds))
-            result = [{'image_id' : pred_list[0],
-                        'bbox' : tcvt.cv2_to_coco(pred_list[1][0][i][:-1].tolist() , dim =1),
-                        'score' : pred_list[1][0][i][-1],
-                        'category_id' : pred_list[1][1][i] } for pred_list in preds_list  for i in range(len(pred_list[1][1]))
-                        if tcvt.get_area(pred_list[1][0][i][:4]) > 0
-                         ]
+
+            result = tcvt.preds_to_json(preds_list)
                 
 
-            with open('result.json', "w") as json_file:
+            with open(f'./{result}/{save_name}/result_{epoch}.json', "w") as json_file:
                 json.dump(result, json_file, indent=4 , cls = tcvt.NpEncoder)
+
             try:
-                visualtool = utils.visualization.VisualTool(coco_gt_path = './dataset/test.json' , coco_pred_path='./result.json' )
-                PR_plot = visualtool.PR_plot()
-                R_plot , P_plot , F1_plot = visualtool.conf_vs()
-                coco_cvt = utils.type_converter.COCO_converter('./dataset/test.json' , 'result.json')
-                mAP = coco_cvt.results['precision'][0, :, :, 0, -1].mean()
-                cat1_precision ,cat1_recall  = coco_cvt.PR(conf_score=0.5, catId = 1)
-                cat2_precision ,cat2_recall = coco_cvt.PR(conf_score=0.5, catId = 2)
-                val_log_dict = {
-                "val/epoch" : epoch,
-                "val/loss_bbox" : bbox_losses / len(val_dataloader),
-                "val/loss_cls" : cls_losses / len(val_dataloader),
-                "val/loss_total" : total_losses / len(val_dataloader),
-                "val_precision" : (cat1_precision + cat2_precision) /2 ,
-                "val_recall" : (cat1_recall + cat2_recall) /2 ,
-                "val_mAP" :  mAP}
-                wandb.log(val_log_dict)
-                debug_img_id_list = [coco_cvt.img_name_to_id[img_meta['filename'].replace('./dataset/images/' ,'')] for img_meta in img_metas]
-                try:
-                    wandb_imgs = [utils.visualization.bbox_debugger(coco_cvt.img_annos(img_id),coco_cvt.catId_to_name ,img_prefix ='./dataset/'  ) for img_id in debug_img_id_list]
-                except:
-                    pass
-                val_img_dict =  {
-                    # 'val/bbox_debug' : wandb_imgs,
-                    "val/PR_plot": PR_plot,
-                    "val/R_plot": R_plot,
-                    "val/P_plot": P_plot,
-                    "val/F1_plot": F1_plot , 
-                }
-                wandb.log(val_img_dict)
-            except:
-                pass
+                utils.visualization.visual_plot(
+                    img_metas = img_metas ,
+                    val_nums = val_nums,
+                    epoch = epoch ,
+                    bbox_losses= bbox_losses,
+                    cls_losses= cls_losses)
+                
+            except: pass
             
 
-            print(f'step : {j}\nloss_bbox : {bbox_losses / len(val_dataloader)}   \
-                    loss_cls_total : {cls_losses /len(val_dataloader)}  total_loss : {total_losses / len(val_dataloader)}')
+            print(f'step : {j}\n \
+                    loss_bbox : {bbox_losses / val_nums} \
+                    loss_cls_total : {cls_losses /val_nums}  \
+                    total_loss : {total_losses / val_nums}')
     
-    print('-' * 30)
+    print(f'end epoch {epoch}' +'-' * 30)
 
  

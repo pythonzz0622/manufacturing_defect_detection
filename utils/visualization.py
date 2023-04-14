@@ -162,3 +162,36 @@ def input_visual(images , bboxes  ,  batch_size , de_std , de_mean):
             c += 1
     fig.tight_layout(h_pad = -7)
     return fig
+
+
+def visual_plot(img_metas , val_nums , epoch , bbox_losses , cls_losses):
+    visualtool = VisualTool(coco_gt_path = './dataset/test.json' , coco_pred_path='./result.json' )
+    PR_plot = visualtool.PR_plot()
+    R_plot , P_plot , F1_plot = visualtool.conf_vs()
+    coco_cvt = tcvt.COCO_converter('./dataset/test.json' , 'result.json')
+    mAP = coco_cvt.results['precision'][0, :, :, 0, -1].mean()
+    cat1_precision ,cat1_recall  = coco_cvt.PR(conf_score=0.5, catId = 1)
+    cat2_precision ,cat2_recall = coco_cvt.PR(conf_score=0.5, catId = 2)
+    val_log_dict = {
+    "val/epoch" : epoch,
+    "val/loss_bbox" : bbox_losses / val_nums,
+    "val/loss_cls" : cls_losses / val_nums,
+    "val/loss_total" : (bbox_losses + cls_losses) / val_nums,
+    "val_precision" : (cat1_precision + cat2_precision) /2 ,
+    "val_recall" : (cat1_recall + cat2_recall) /2 ,
+    "val_mAP" :  mAP}
+    wandb.log(val_log_dict)
+    debug_img_id_list = [coco_cvt.img_name_to_id[img_meta['filename'].replace('./dataset/images/' ,'')] for img_meta in img_metas]
+    val_img_dict =  {
+        # 'val/bbox_debug' : wandb_imgs,
+        "val/PR_plot": PR_plot,
+        "val/R_plot": R_plot,
+        "val/P_plot": P_plot,
+        "val/F1_plot": F1_plot , 
+    }
+    try:
+        val_img_dict['val/bbox_debug'] = [bbox_debugger(coco_cvt.img_annos(img_id),coco_cvt.catId_to_name ,img_prefix ='./dataset/'  ) for img_id in debug_img_id_list]
+    except:
+        pass
+    wandb.log(val_img_dict)
+    plt.close()

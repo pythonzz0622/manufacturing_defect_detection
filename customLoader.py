@@ -136,11 +136,11 @@ class CustomRandomSampler(Sampler[int]):
 class CustomBatchSampler(Sampler[List[int]]):
     def __init__(self, sampler_1: Union[Sampler[int], Iterable[int]],
                  sampler_2: Union[Sampler[int], Iterable[int]],
-                 batch_size: int, fixed_size: int, drop_last=True) -> None:
+                 batch_size: int, prefix_size: int, drop_last=True) -> None:
         self.sampler_1 = sampler_1
         self.sampler_2 = sampler_2
         self.batch_size = batch_size
-        self.fixed_size = fixed_size
+        self.prefix_size = prefix_size
         self.drop_last = drop_last
 
     def __iter__(self) -> Iterator[List[int]]:
@@ -153,7 +153,7 @@ class CustomBatchSampler(Sampler[List[int]]):
             while True:
                 try:
                     idx = next(normal_sampler)
-                    while fix_size < self.fixed_size:
+                    while fix_size < self.prefix_size:
                         batch[idx_in_batch] = next(defect_sampler_iter)
                         fix_size += 1
                         idx_in_batch += 1
@@ -170,7 +170,7 @@ class CustomBatchSampler(Sampler[List[int]]):
 
     def __len__(self) -> int:
         num_steps = math.ceil(
-            len(self.sampler_2.other_imgs) / (self.batch_size - self.fixed_size))
+            len(self.sampler_2.other_imgs) / (self.batch_size - self.prefix_size))
         return num_steps
 
 
@@ -198,12 +198,12 @@ def collate_fn(batch):
     return img_metas, torch.stack(image_list, dim=0), bboxes_list, cls_ids_list
 
 
-def import_data_loader(data_dir, transformer):
+def import_data_loader(data_dir, transformer , prefix_size ):
     dataset = CustomDataset(data_dir=data_dir, transformer=transformer)
     random_sampler_1 = CustomRandomSampler(dataset)
     random_sampler_2 = CustomRandomSampler(dataset)
     batchsampler = CustomBatchSampler(
-        random_sampler_1, random_sampler_2, batch_size=8, fixed_size=3)
+        random_sampler_1, random_sampler_2, batch_size=8, prefix_size=prefix_size)
     dataloader = CustomDataLoader(
         dataset, batch_sampler=batchsampler, num_workers=8, collate_fn=collate_fn)
 
@@ -297,7 +297,7 @@ class TestCustomDataset(data.Dataset):
 #     random_sampler_1 = CustomRandomSampler(dataset)
 #     random_sampler_2 = CustomRandomSampler(dataset)
 #     batchsampler = CustomBatchSampler(
-#         random_sampler_1, random_sampler_2, batch_size=8, fixed_size=3)
+#         random_sampler_1, random_sampler_2, batch_size=8, prefix_size=3)
 #     dataloader = CustomDataLoader(
 #         dataset, batch_sampler=batchsampler, num_workers=8, collate_fn=collate_fn)
 

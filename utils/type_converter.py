@@ -86,7 +86,12 @@ def _json_parser(json_list, keys=['bbox', 'category_id', 'score']):
         result[key] = list(pluck(key, json_list))
     return result
 
-
+def preds_to_json(preds_list):
+    return [{'image_id' : pred_list[0],
+                'bbox' : cv2_to_coco(pred_list[1][0][i][:-1].tolist() , dim =1),
+                'score' : pred_list[1][0][i][-1],
+                'category_id' : pred_list[1][1][i] } for pred_list in preds_list  for i in range(len(pred_list[1][1]))
+                if get_area(pred_list[1][0][i][:4]) > 0]
 class COCO_converter:
     ''' COCO path를 활용해 값을 도출하는 class
 
