@@ -30,10 +30,34 @@ from mmdet.utils import (build_ddp, build_dp, compat_cfg,
 from mmdet.datasets import (build_dataloader, build_dataset,
                             replace_ImageToTensor)
 
-def Swin_L_neck():
-    return mmdet.models.necks.FPN(
-        in_channels=[192, 384, 768, 1536],
-        out_channels=256,
-        start_level=1,
-        add_extra_convs='on_output',
-        num_outs=3)
+def Swin_L_neck(m_type):
+    if m_type == 'fpn':
+        return mmdet.models.necks.FPN(
+            in_channels=[192, 384, 768, 1536],
+            out_channels=256,
+            start_level=1,
+            add_extra_convs='on_output',
+            num_outs=3)
+    if m_type =='pafpn':
+        return mmdet.models.necks.PAFPN(
+                in_channels=[192, 384, 768, 1536],
+                out_channels=256,
+                start_level=1,
+                add_extra_convs='on_output',
+                num_outs=3)
+
+def Resnet_152_neck(m_type):
+    if m_type == 'fpn':
+        return mmdet.models.necks.FPN(
+            in_channels=[256, 512, 1024, 2048],
+            out_channels=256,
+            start_level=1,
+            add_extra_convs='on_output',
+            num_outs=3)
+    if m_type =='pafpn':
+        return mmdet.models.necks.PAFPN(
+                in_channels=[256, 512, 1024, 2048],
+                out_channels=256,
+                start_level=1,
+                add_extra_convs='on_output',
+                num_outs=3)

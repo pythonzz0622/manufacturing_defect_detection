@@ -231,7 +231,7 @@ class COCO_converter:
         r_list = []
         conf_list = []
         for catId in range(1, self.cat_nums + 1):
-            for conf in np.linspace(0, 1, 101):
+            for conf in np.linspace(.0, 1.00, int(np.round((1.00 - .0) / .01)) + 1, endpoint=True):
                 p, r = self.PR(conf, catId=catId)
                 p_list.append(p)
                 r_list.append(r)
@@ -249,10 +249,10 @@ class COCO_converter:
         return df
 
 
-# if __name__ == '__main__':
-#     coco_visual = COCO_converter('../info/test.json', 'result.json')
-#     print(coco_visual.visual(idx=516))
-#     print(coco_visual.coco_gt.getImgIds(catIds=1))
+if __name__ == '__main__':
+    coco_visual = COCO_converter('../info/test.json', 'result.json')
+    print(coco_visual.visual(idx=516))
+    print(coco_visual.coco_gt.getImgIds(catIds=1))
 
-#     coco_visual.visual(idx=1214)
-#     coco_visual
+    coco_visual.visual(idx=1214)
+    coco_visual

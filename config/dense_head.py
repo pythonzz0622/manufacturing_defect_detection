@@ -57,9 +57,9 @@ def Retina_head():
                                             feat_channels=256,
                                             anchor_generator=dict(
                                                 type='AnchorGenerator',
-                                                scales = [3, 3.5,3.7, 4,4.5] , 
-                                                ratios=[ 0.3, 0.4, 0.6, 0.7,1.0,1.2 ],
-                                                strides=[15, 22, 30]
+                                                scales = [3, 3.5, 4,4.3 ,4.5] , 
+                                                ratios=[ 0.4,  0.5,0.6, 0.7,0.9,1.0 ],
+                                                strides=[12, 24, 32]
                                                 ),
                                             bbox_coder=dict(
                                                 type='DeltaXYWHBBoxCoder',

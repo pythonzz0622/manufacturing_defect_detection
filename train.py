@@ -1,5 +1,5 @@
-from customLoader import import_data_loader
-import customLoader
+from utils.customLoader import import_data_loader
+import utils.customLoader as customLoader
 import config
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
@@ -19,7 +19,7 @@ import wandb
 import time
 import argparse
 
-parser = argparse.ArgumentParser(description='coco_file을 가지고 train test를 나누는 script')
+parser = argparse.ArgumentParser()
 
 parser.add_argument('--save_name' , help = 'retina-fpn-swin-l' , type = str)
 parser.add_argument('--load_path' , help = './ckpts/data_retina_num_5000_epoch_100.pth' , type = str)
@@ -50,8 +50,8 @@ val_transformer = A.Compose([
 
 # set config -------------------------------------------------------------------------
 run = wandb.init(
-    id = "ret-fpn-swin-l",
-    project='defect-detection',
+    id = "retina-pafpn-swin-l",
+    project='SD_E&T_v4',
     notes="defect",
     entity = "gnu-ml-lab" , 
     # mode="disabled"
@@ -59,6 +59,7 @@ run = wandb.init(
 backbone = 'Swin_L'
 neck = 'Swin_L_neck'
 bbox_head = 'Retina_head'
+neck_type = 'pafpn'
 prefix_size =  3
 save_name = args.save_name
 load_path = args.load_path
@@ -81,7 +82,7 @@ de_std , de_mean = tuple(std * 255 for std in std) , tuple(mean * 255 for mean i
 
 model = config.get_model(backbone_name = backbone, 
                                    neck_name = neck ,
-                                    bbox_head_name =  bbox_head)
+                                    bbox_head_name =  bbox_head , neck_type=neck_type)
 
 optimizer = optim.AdamW(model.parameters(), lr=0.0001 / 8, betas=(0.9, 0.999), weight_decay=0.05,)
 scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30,80], gamma=0.5)
@@ -156,11 +157,12 @@ for epoch in range(1, epochs + 1):
             result = tcvt.preds_to_json(preds_list)
                 
 
-            with open(f'./{result}/{save_name}/result_{epoch}.json', "w") as json_file:
+            with open(f'./result/{save_name}/result_{epoch}.json', "w") as json_file:
                 json.dump(result, json_file, indent=4 , cls = tcvt.NpEncoder)
 
             try:
                 utils.visualization.visual_plot(
+                    save_name = save_name,
                     img_metas = img_metas ,
                     val_nums = val_nums,
                     epoch = epoch ,
@@ -173,7 +175,7 @@ for epoch in range(1, epochs + 1):
             print(f'step : {j}\n \
                     loss_bbox : {bbox_losses / val_nums} \
                     loss_cls_total : {cls_losses /val_nums}  \
-                    total_loss : {total_losses / val_nums}')
+                    total_loss : {(bbox_losses + cls_losses) / val_nums}')
     
     print(f'end epoch {epoch}' +'-' * 30)
 

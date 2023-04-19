@@ -17,11 +17,11 @@ class model(nn.Module):
         out = self.bbox_head(out)
         return out
 
-def get_model(backbone_name , neck_name , bbox_head_name):
+def get_model(backbone_name , neck_name , bbox_head_name , neck_type):
     b = getattr(config.backbone , backbone_name)
     n = getattr(config.neck , neck_name)
     h = getattr(config.dense_head ,bbox_head_name)
-    return model(b() , n() , h())
+    return model(b() , n(neck_type) , h())
 
 
 if __name__ == "__main__":

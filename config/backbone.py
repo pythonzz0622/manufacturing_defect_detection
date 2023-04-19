@@ -52,11 +52,11 @@ def Swin_L():
 
 def Rsenet50():
     return mmdet.models.backbones.ResNet(
-                depth=50,
+                depth=152,
                 num_stages=4,
                 out_indices=(0, 1, 2, 3),
                 frozen_stages=1,
                 norm_cfg=dict(type='BN', requires_grad=True),
                 norm_eval=True,
                 style='pytorch',
-                init_cfg=dict( type='Pretrained', checkpoint= 'torchvision://resnet50'))
+                init_cfg=dict( type='Pretrained', checkpoint= 'torchvision://resnet152'))

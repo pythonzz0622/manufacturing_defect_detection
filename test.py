@@ -1,5 +1,5 @@
-from customLoader import import_data_loader
-import customLoader
+from utils.customLoader import import_data_loader
+import utils.customLoader as customLoader
 from model_config import retina_fpn_swin_l
 import albumentations as A
 from albumentations.pytorch import ToTensorV2

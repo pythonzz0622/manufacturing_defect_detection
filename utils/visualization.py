@@ -59,6 +59,7 @@ class VisualTool:
 
     def PR_plot(self):
         # Precision_Recall Curve Plot
+
         df = self.coco_cvt.PRF_df()
         fig , ax = plt.subplots(1,1)
         for i, category in enumerate(df['category'].unique()):
@@ -99,6 +100,12 @@ class VisualTool:
 
 
 def bbox_debugger(img_annos , catId_to_name , img_prefix ='' ):
+    ''' bounding box가 잘 prediction되는지 확인하기 위한 function
+
+        Args:
+
+        Returns: 
+    '''
     img = cv2.imread(img_prefix + img_annos['file_name'])
     img = cv2.cvtColor(img , cv2.COLOR_BGR2RGB)
     box_data = []
@@ -108,13 +115,13 @@ def bbox_debugger(img_annos , catId_to_name , img_prefix ='' ):
             bbox = tcvt.coco_to_cv2(img_annos['preds']['bbox'][i] , dim= 1)
             score = img_annos['preds']['score'][i]
             bbox = {
-            # another box expressed in the pixel domain
-            "position": {"minX": bbox[0], "maxX": bbox[2], "minY": bbox[1], "maxY": bbox[3]},
-            "domain": "pixel",
-            "class_id": class_id,
-            "box_caption": f"{catId_to_name[class_id]} , {score}",
-            "scores": {'score' : score}
-            }
+                # another box expressed in the pixel domain
+                "position": {"minX": bbox[0], "maxX": bbox[2], "minY": bbox[1], "maxY": bbox[3]},
+                "domain": "pixel",
+                "class_id": class_id,
+                "box_caption": f"{catId_to_name[class_id]} , {score}",
+                "scores": {'score' : score}}
+            
             box_data.append(bbox)
     if img_annos.get('ground_truth'):
         box_data_gt = []
@@ -122,12 +129,12 @@ def bbox_debugger(img_annos , catId_to_name , img_prefix ='' ):
             class_id = img_annos['ground_truth']['category_id'][i]
             bbox = tcvt.coco_to_cv2(img_annos['ground_truth']['bbox'][i] , dim= 1)
             bbox = {
-            # another box expressed in the pixel domain
-            "position": {"minX": bbox[0], "maxX": bbox[2], "minY": bbox[1], "maxY": bbox[3]},
-            "domain": "pixel",
-            "class_id": class_id,
-            "box_caption": f"{catId_to_name[class_id]} "
-            }
+                # another box expressed in the pixel domain
+                "position": {"minX": bbox[0], "maxX": bbox[2], "minY": bbox[1], "maxY": bbox[3]},
+                "domain": "pixel",
+                "class_id": class_id,
+                "box_caption": f"{catId_to_name[class_id]} "}
+            
             box_data_gt.append(bbox)
         boxes = {"predictions": {"box_data": box_data, "class_labels": catId_to_name},
             "ground_truths": {"box_data": box_data_gt, "class_labels": catId_to_name},}  # inference-space
@@ -139,8 +146,8 @@ def input_visual(images , bboxes  ,  batch_size , de_std , de_mean):
     '''
     images (Torch.tensor) : batch별 images
     bboxes (List[Torch.tensor]) : batch 별 bboxes
-    de_std : 표준화 전환 
-    de_mean : 표준화 전환 
+    de_std : denormalized
+    de_mean : denormalized
     '''
     batch_size = 8
     ncol = int(batch_size / 2 )
@@ -164,22 +171,22 @@ def input_visual(images , bboxes  ,  batch_size , de_std , de_mean):
     return fig
 
 
-def visual_plot(img_metas , val_nums , epoch , bbox_losses , cls_losses):
-    visualtool = VisualTool(coco_gt_path = './dataset/test.json' , coco_pred_path='./result.json' )
+def visual_plot( save_name , img_metas , val_nums , epoch , bbox_losses , cls_losses):
+    visualtool = VisualTool(coco_gt_path = './dataset/test.json' , coco_pred_path=f'./result/{save_name}/result_{epoch}.json' )
     PR_plot = visualtool.PR_plot()
     R_plot , P_plot , F1_plot = visualtool.conf_vs()
-    coco_cvt = tcvt.COCO_converter('./dataset/test.json' , 'result.json')
+    coco_cvt = tcvt.COCO_converter('./dataset/test.json' , f'./result/{save_name}/result_{epoch}.json')
     mAP = coco_cvt.results['precision'][0, :, :, 0, -1].mean()
     cat1_precision ,cat1_recall  = coco_cvt.PR(conf_score=0.5, catId = 1)
     cat2_precision ,cat2_recall = coco_cvt.PR(conf_score=0.5, catId = 2)
     val_log_dict = {
-    "val/epoch" : epoch,
-    "val/loss_bbox" : bbox_losses / val_nums,
-    "val/loss_cls" : cls_losses / val_nums,
-    "val/loss_total" : (bbox_losses + cls_losses) / val_nums,
-    "val_precision" : (cat1_precision + cat2_precision) /2 ,
-    "val_recall" : (cat1_recall + cat2_recall) /2 ,
-    "val_mAP" :  mAP}
+        "val/epoch" : epoch,
+        "val/loss_bbox" : bbox_losses / val_nums,
+        "val/loss_cls" : cls_losses / val_nums,
+        "val/loss_total" : (bbox_losses + cls_losses) / val_nums,
+        "val_precision" : (cat1_precision + cat2_precision) /2 ,
+        "val_recall" : (cat1_recall + cat2_recall) /2 ,
+        "val_mAP" :  mAP}
     wandb.log(val_log_dict)
     debug_img_id_list = [coco_cvt.img_name_to_id[img_meta['filename'].replace('./dataset/images/' ,'')] for img_meta in img_metas]
     val_img_dict =  {
