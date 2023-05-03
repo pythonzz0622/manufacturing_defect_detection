@@ -18,6 +18,8 @@ import json
 import wandb
 import time
 import argparse
+import utils.logger as logger
+from timm.scheduler.cosine_lr import CosineLRScheduler
 
 parser = argparse.ArgumentParser()
 
@@ -31,7 +33,6 @@ args = parser.parse_args()
 
 # set transformer ---------------------------------------------------------------
 mean , std = (0.5, 0.5, 0.5) , (0.5, 0.5, 0.5)
-
 
 train_transformer = A.Compose([
     A.Resize(512, 512),
@@ -50,18 +51,20 @@ val_transformer = A.Compose([
 
 # set config -------------------------------------------------------------------------
 run = wandb.init(
-    id = "retina-pafpn-swin-l",
+    id = "retina-pafpn-resnet",
     project='SD_E&T_v4',
     notes="defect",
     entity = "gnu-ml-lab" , 
-    # mode="disabled"
+    mode="disabled"
     )
-backbone = 'Swin_L'
-neck = 'Swin_L_neck'
+
+backbone = 'Rsenet152'
+neck = 'Resnet_152_neck'
 bbox_head = 'Retina_head'
 neck_type = 'pafpn'
 prefix_size =  3
 save_name = args.save_name
+logger = logger.create_logger(save_name)
 load_path = args.load_path
 os.makedirs(f'./ckpts/{save_name}' ,exist_ok= True)
 os.makedirs(f'./result/{save_name}' ,exist_ok= True)
@@ -69,7 +72,7 @@ epochs = args.epochs
 interval = args.interval
 train_path = args.train_path
 val_path = args.val_path
-
+interval = 1
 
 train_dataloader = import_data_loader( train_path, transformer=train_transformer , prefix_size= prefix_size)
 val_dataset = customLoader.TestCustomDataset( val_path, transformer=val_transformer)
@@ -85,24 +88,32 @@ model = config.get_model(backbone_name = backbone,
                                     bbox_head_name =  bbox_head , neck_type=neck_type)
 
 optimizer = optim.AdamW(model.parameters(), lr=0.0001 / 8, betas=(0.9, 0.999), weight_decay=0.05,)
-scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30,80], gamma=0.5)
+lr_scheduler = CosineLRScheduler(
+    optimizer,
+    t_initial=(2000 - 500),
+    lr_min=5e-6,
+    warmup_lr_init=5e-7,
+    warmup_t=1000,
+    cycle_limit=20,
+    t_in_epochs=False,
+    warmup_prefix=True,
+)
 
 
 
 wandb.define_metric("train/step"); wandb.define_metric("train/*", step_metric="train/step"); 
 wandb.define_metric("val/epoch");  wandb.define_metric("val/*", step_metric="val/epoch")
 
-step = 0
+step = 1
 
 if load_path: model.load_state_dict(torch.load(load_path))
 model = model.cuda()
 
 for epoch in range(1, epochs + 1):
-    print(f'epoch : {epoch}')
+    logger.info(f'epoch : {epoch}')
     cls_losses, bbox_losses, total_losses = 0, 0, 0
     
     for i, (img_metas, images, bboxes, labels) in enumerate(train_dataloader,1):
-        step += i
         if i  < 5:
             wandb.log({'train/bbox_debug' : utils.visualization.input_visual(images , bboxes , 8 , de_std , de_mean)} ,step = step )
 
@@ -115,12 +126,12 @@ for epoch in range(1, epochs + 1):
         optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
-
+        lr_scheduler.step_update(num_updates=step)
+        step += 1
         if i % interval == 0:
-            scheduler.step()
 
-            print(f'[{i} / {len(train_dataloader)}]')
-            print(f'step : {i}\n \
+            logger.info(f'[{i} / {len(train_dataloader)}]')
+            logger.info(f'step : {i}\n \
                     loss_bbox : {bbox_losses / interval}  \
                     loss_cls_total : {cls_losses /interval}  \
                     total_loss : {total_losses / interval}')
@@ -129,13 +140,12 @@ for epoch in range(1, epochs + 1):
                 'train/lr' : optimizer.param_groups[0]['lr'],
                 "train/loss_bbox" : bbox_losses / interval,
                 "train/loss_cls" : cls_losses / interval,
-                "train/loss_total" : total_losses / interval
-            })
+                "train/loss_total" : total_losses / interval})
             cls_losses, bbox_losses, total_losses = 0, 0, 0
 
     
     torch.save(model.state_dict(), f'./ckpts/{save_name}/epoch_{epoch}.pth')
-    if epoch :
+    if epoch % interval == 0:
         cls_losses , bbox_losses , total_losses = 0, 0, 0
         preds_list = list()
         with torch.no_grad():
@@ -149,10 +159,10 @@ for epoch in range(1, epochs + 1):
                     cls_scores=outputs[0],
                     bbox_preds=outputs[1],
                     img_metas=img_metas ,
-                    rescale = True
-                )
-                preds = [(pred[0].cpu().numpy(),pred[1].cpu().numpy())for pred in preds]
-                preds_list.extend(zip( [cvt.img_name_to_id[ os.path.basename(img_meta['filename'])] for img_meta in img_metas], preds))
+                    rescale = True)
+                
+                preds = [(pred[0].cpu().numpy(),pred[1].cpu().numpy()) for pred in preds]
+                preds_list.extend(zip([cvt.img_name_to_id[ os.path.basename(img_meta['filename'])] for img_meta in img_metas], preds))
 
             result = tcvt.preds_to_json(preds_list)
                 
@@ -172,11 +182,10 @@ for epoch in range(1, epochs + 1):
             except: pass
             
 
-            print(f'step : {j}\n \
-                    loss_bbox : {bbox_losses / val_nums} \
-                    loss_cls_total : {cls_losses /val_nums}  \
-                    total_loss : {(bbox_losses + cls_losses) / val_nums}')
+            logger.info(f'step : {j}\n \
+                          loss_bbox : {bbox_losses / val_nums} \
+                          loss_cls_total : {cls_losses /val_nums}  \
+                          total_loss : {(bbox_losses + cls_losses) / val_nums}')
     
-    print(f'end epoch {epoch}' +'-' * 30)
-
+    print(f"end epoch {epoch} {'-' * 30}")
  
