@@ -1,0 +1,69 @@
+\begin{thebibliography}{10}
+
+\bibitem{liu2021swin}
+Ze~Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng Zhang, Stephen Lin, and
+  Baining Guo.
+\newblock Swin transformer: Hierarchical vision transformer using shifted
+  windows.
+\newblock In {\em Proceedings of the IEEE/CVF international conference on
+  computer vision}, pages 10012--10022, 2021.
+
+\bibitem{r-cnn}
+Ross Girshick, Jeff Donahue, Trevor Darrell, and Jitendra Malik.
+\newblock Rich feature hierarchies for accurate object detection and semantic
+  segmentation.
+\newblock In {\em Proceedings of the IEEE conference on computer vision and
+  pattern recognition}, pages 580--587, 2014.
+
+\bibitem{retinanet}
+Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Doll{\'a}r.
+\newblock Focal loss for dense object detection.
+\newblock In {\em Proceedings of the IEEE international conference on computer
+  vision}, pages 2980--2988, 2017.
+
+\bibitem{fpn}
+Tsung-Yi Lin, Piotr Doll{\'a}r, Ross Girshick, Kaiming He, Bharath Hariharan,
+  and Serge Belongie.
+\newblock Feature pyramid networks for object detection.
+\newblock In {\em Proceedings of the IEEE conference on computer vision and
+  pattern recognition}, pages 2117--2125, 2017.
+
+\bibitem{AdamW}
+Ilya Loshchilov and Frank Hutter.
+\newblock Decoupled weight decay regularization.
+\newblock {\em arXiv preprint arXiv:1711.05101}, 2017.
+
+\bibitem{huang2017speed}
+Jonathan Huang, Vivek Rathod, Chen Sun, Menglong Zhu, Anoop Korattikara,
+  Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama,
+  et~al.
+\newblock Speed/accuracy trade-offs for modern convolutional object detectors.
+\newblock In {\em Proceedings of the IEEE conference on computer vision and
+  pattern recognition}, pages 7310--7311, 2017.
+
+\bibitem{ale2018road}
+Laha Ale, Ning Zhang, and Longzhuang Li.
+\newblock Road damage detection using retinanet.
+\newblock In {\em 2018 IEEE International Conference on Big Data (Big Data)},
+  pages 5197--5200. IEEE, 2018.
+
+\bibitem{tiwari2022detecting}
+Vinayak Tiwari, Amit Singhal, and Nischay Dhankhar.
+\newblock Detecting covid-19 opacity in x-ray images using yolo and retinanet
+  ensemble.
+\newblock In {\em 2022 IEEE Delhi Section Conference (DELCON)}, pages 1--5.
+  IEEE, 2022.
+
+\bibitem{redmon2016you}
+Joseph Redmon, Santosh Divvala, Ross Girshick, and Ali Farhadi.
+\newblock You only look once: Unified, real-time object detection.
+\newblock In {\em Proceedings of the IEEE conference on computer vision and
+  pattern recognition}, pages 779--788, 2016.
+
+\bibitem{li2018real}
+Jiangyun Li, Zhenfeng Su, Jiahui Geng, and Yixin Yin.
+\newblock Real-time detection of steel strip surface defects based on improved
+  yolo detection network.
+\newblock {\em IFAC-PapersOnLine}, 51(21):76--81, 2018.
+
+\end{thebibliography}
